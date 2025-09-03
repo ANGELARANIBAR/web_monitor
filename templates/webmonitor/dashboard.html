@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Monitoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .website-card {
+            border-left: 4px solid #007bff;
+            transition: transform 0.2s;
+        }
+        .website-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .uptime-good { border-left-color: #28a745; }
+        .uptime-warning { border-left-color: #ffc107; }
+        .uptime-danger { border-left-color: #dc3545; }
+        .loading { display: none; }
+        .loading.show { display: block; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-globe"></i> Web Monitoring Dashboard
+            </span>
+            <div>
+                <button class="btn btn-outline-light me-2" onclick="loadWebsites()">
+                    <i class="fas fa-upload"></i> Load URLs
+                </button>
+                <button class="btn btn-success" onclick="startMonitoring()">
+                    <i class="fas fa-play"></i> Start Monitoring
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <h5><i class="fas fa-globe"></i> Total Websites</h5>
+                    <h2 id="total-websites">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <h5><i class="fas fa-check-circle"></i> Online</h5>
+                    <h2 id="online-websites">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <h5><i class="fas fa-times-circle"></i> Offline</h5>
+                    <h2 id="offline-websites">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <h5><i class="fas fa-percentage"></i> Avg Uptime</h5>
+                    <h2 id="avg-uptime">0%</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center loading" id="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Monitoring websites...</p>
+        </div>
+
+        <div class="row" id="websites-grid">
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let monitoringInterval;
+        
+        async function loadWebsitesData() {
+            try {
+                const response = await fetch("/api/websites/");
+                const data = await response.json();
+                displayWebsites(data.websites);
+                updateSummaryCards(data.websites);
+            } catch (error) {
+                console.error("Error loading websites:", error);
+            }
+        }
+        
+        function displayWebsites(websites) {
+            const grid = document.getElementById("websites-grid");
+            grid.innerHTML = "";
+            
+            websites.forEach(website => {
+                const card = createWebsiteCard(website);
+                grid.appendChild(card);
+            });
+        }
+        
+        function createWebsiteCard(website) {
+            const col = document.createElement("div");
+            col.className = "col-md-6 col-lg-4 mb-4";
+            
+            const uptimeClass = getUptimeClass(website.stats.uptime_percentage);
+            const statusClass = getStatusClass(website.latest_result?.status);
+            
+            col.innerHTML = "<div class=\"card website-card " + uptimeClass + "\">" +
+                "<div class=\"card-body\">" +
+                "<h6 class=\"card-title\"><i class=\"fas fa-link\"></i> " + (website.name || "Unnamed") + "</h6>" +
+                "<p class=\"card-text small text-muted\">" + website.url + "</p>" +
+                "<div class=\"row text-center mb-3\">" +
+                "<div class=\"col-4\"><small class=\"text-muted\">Status</small><br><span class=\"badge " + statusClass + "\">" + (website.latest_result?.status || "Unknown") + "</span></div>" +
+                "<div class=\"col-4\"><small class=\"text-muted\">Response</small><br><strong>" + (website.latest_result?.response_time || website.stats.average_response_time || 0) + "s</strong></div>" +
+                "<div class=\"col-4\"><small class=\"text-muted\">Uptime</small><br><strong>" + website.stats.uptime_percentage.toFixed(1) + "%</strong></div>" +
+                "</div>" +
+                "<div class=\"progress mb-2\" style=\"height: 5px;\">" +
+                "<div class=\"progress-bar\" role=\"progressbar\" style=\"width: " + website.stats.uptime_percentage + "%\"></div>" +
+                "</div>" +
+                "<small class=\"text-muted\">Last check: " + (website.stats.last_check ? new Date(website.stats.last_check).toLocaleString() : "Never") + "</small>" +
+                "</div></div>";
+            
+            return col;
+        }
+        
+        function getUptimeClass(uptime) {
+            if (uptime >= 95) return "uptime-good";
+            if (uptime >= 80) return "uptime-warning";
+            return "uptime-danger";
+        }
+        
+        function getStatusClass(status) {
+            switch(status) {
+                case "success": return "bg-success";
+                case "error": return "bg-danger";
+                case "timeout": return "bg-warning";
+                case "connection_error": return "bg-secondary";
+                default: return "bg-secondary";
+            }
+        }
+        
+        function updateSummaryCards(websites) {
+            const total = websites.length;
+            const online = websites.filter(w => w.latest_result?.status === "success").length;
+            const offline = total - online;
+            const avgUptime = websites.length > 0 ? 
+                (websites.reduce((sum, w) => sum + w.stats.uptime_percentage, 0) / websites.length) : 0;
+            
+            document.getElementById("total-websites").textContent = total;
+            document.getElementById("online-websites").textContent = online;
+            document.getElementById("offline-websites").textContent = offline;
+            document.getElementById("avg-uptime").textContent = avgUptime.toFixed(1) + "%";
+        }
+        
+        async function startMonitoring() {
+            const loading = document.getElementById("loading");
+            loading.classList.add("show");
+            
+            try {
+                const response = await fetch("/api/monitoring/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    if (monitoringInterval) clearInterval(monitoringInterval);
+                    monitoringInterval = setInterval(loadWebsitesData, 5000);
+                    
+                    setTimeout(() => {
+                        loading.classList.remove("show");
+                        loadWebsitesData();
+                    }, 10000);
+                } else {
+                    loading.classList.remove("show");
+                    alert("Error starting monitoring: " + data.error);
+                }
+            } catch (error) {
+                loading.classList.remove("show");
+                console.error("Error starting monitoring:", error);
+                alert("Error starting monitoring");
+            }
+        }
+        
+        async function loadWebsites() {
+            try {
+                const response = await fetch("/api/load-websites/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({json_file: "urls-o.json"})
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert("Websites loaded successfully!");
+                    loadWebsitesData();
+                } else {
+                    alert("Error loading websites: " + data.error);
+                }
+            } catch (error) {
+                console.error("Error loading websites:", error);
+                alert("Error loading websites");
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            loadWebsitesData();
+            setInterval(loadWebsitesData, 30000);
+        });
+    </script>
+</body>
+</html>

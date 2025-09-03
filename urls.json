@@ -1,0 +1,27 @@
+{
+    "urls": [
+"http://asistenciamre.rree.gob.pe/WEB_ASISTENCIA_PMRE/",
+"http://asistencia.rree.gob.pe/webasistencia",
+"http://apostilla.rree.gob.pe/sae",
+"http://apostilla.rree.gob.pe/saeupdate",
+"http://regcivil.rree.gob.pe/src",
+"http://sistemavisitas.rree.gob.pe/sgv",
+"https://sistemas1.rree.gob.pe/reportesplanilla",
+"https://sistemas1.rree.gob.pe/datamart_escalafon",
+"https://sistemas1.rree.gob.pe/srh",
+"https://sistemas1.rree.gob.pe/sce",
+"https://sistemas1.rree.gob.pe/acultural",
+"https://sistemas1.rree.gob.pe/kardex",
+"https://orh.rree.gob.pe/sgeo/sgeo_Web/login",
+"https://orh.rree.gob.pe/boletas/web/login",
+"https://orh.rree.gob.pe/sisso",
+"https://sistemas1.rree.gob.pe/ccultural",
+"https://sistemas.rree.gob.pe/sgcc/sgcc-web/",
+"https://stdweb.rree.gob.pe",
+"https://firmadigital.rree.gob.pe/",
+"https://vicus.rree.gob.pe/viaticos",
+"https://adminusuarios.rree.gob.pe/admsam",
+"https://aribalo.rree.gob.pe/"
+
+    ]
+}
